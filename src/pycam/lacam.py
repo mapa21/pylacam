@@ -33,9 +33,12 @@ class HighLevelNode:
     tree: deque[LowLevelNode] = field(default_factory=lambda: deque([LowLevelNode()]))
     g: int = 0
     h: int = 0
-    f: int = g + h
+    f: int = field(init=False)
     neighbors: set[HighLevelNode] = field(default_factory=lambda: set())
 
+    def __post_init__(self) -> None:
+        self.f = self.g + self.h
+    
     def __eq__(self, other) -> bool:
         if isinstance(other, HighLevelNode):
             return self.Q == other.Q
