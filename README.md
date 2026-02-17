@@ -7,10 +7,19 @@ See the main branch for more details.
 
 Note that this implementation still omits many useful techniques as seen in the [IJCAI-23](https://kei18.github.io/lacam2) or [AAMAS-24](https://kei18.github.io/lacam3/) papers.
 
+## Setup
+
+This repository uses [uv](https://github.com/astral-sh/uv) for Python package management.
+After cloning this repo, run:
+
+```sh
+uv sync --all-extras
+```
+
 ## Example
 
 ```sh
-poetry run python app.py -m assets/random-32-32-10.map -i assets/random-32-32-10-random-1.scen -N 400 --no-flg_star
+uv run python app.py -m assets/random-32-32-10.map -i assets/random-32-32-10-random-1.scen -N 400 --no-flg_star
 ```
 
 ![](./assets/random-32-32-10.gif)
