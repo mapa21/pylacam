@@ -52,16 +52,14 @@ from .mapf_utils import (
     Grid,
     get_neighbors,
     is_valid_coord,
+    get_actions,
 )
 
 NO_AGENT: int = np.iinfo(np.int32).max
 """Sentinel value indicating no agent occupies a location."""
 
-NO_LOCATION: Coord = (np.iinfo(np.int32).max, np.iinfo(np.int32).max)
+NO_LOCATION: Coord = (np.iinfo(np.int32).max, np.iinfo(np.int32).max, np.iinfo(np.int32).max)
 """Sentinel coordinate indicating an unassigned location."""
-
-ACTIONS = [(-1, 0), (0, 1), (1, 0), (0, -1), (0, 0)]  # d_y, d_x
-"""Possible actions: up, right, down, left, stay."""
 
 
 @dataclass
@@ -223,7 +221,7 @@ class LaCAM:
         """Solve a MAPF problem instance.
 
         Args:
-            grid: The 2D grid map.
+            grid: The 3D grid map.
             starts: Starting configuration (initial positions of all agents).
             goals: Goal configuration (target positions of all agents).
             time_limit_ms: Time limit in milliseconds (default: 3000).
@@ -467,8 +465,8 @@ class LaCAM:
 
             # set next position by random choice when without constraint
             if Q_to[i] == NO_LOCATION:
-                a = self.rng.choice(ACTIONS)
-                v = (v_i_from[0] + a[0], v_i_from[1] + a[1])
+                a = self.rng.choice(get_actions(v_i_from))
+                v = (v_i_from[0] + a[0], v_i_from[1] + a[1], v_i_from[2] + a[2])
                 if is_valid_coord(self.grid, v):
                     Q_to[i] = v
                 else:

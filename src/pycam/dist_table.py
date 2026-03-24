@@ -21,10 +21,10 @@ class DistTable:
     a subset of distances are needed.
 
     Attributes:
-        grid: The 2D grid map.
+        grid: The 3D grid map.
         goal: The goal coordinate from which distances are computed.
         Q: BFS queue for lazy evaluation (internal use).
-        table: 2D array storing computed distances (internal use).
+        table: 3D array storing computed distances (internal use).
         NIL: Sentinel value indicating uncomputed/unreachable distances (internal use).
     """
 

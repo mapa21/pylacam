@@ -16,10 +16,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 Grid: TypeAlias = NDArray[np.bool_]
-"""2D boolean array representing a grid map where True indicates passable cells."""
+"""3D boolean array representing a grid map where True indicates passable cells."""
 
-Coord: TypeAlias = tuple[int, int]
-"""Coordinate tuple (y, x) representing a position in the grid."""
+Coord: TypeAlias = tuple[int, int, int]
+"""Coordinate tuple (z, y, x) representing a position in the grid."""
 
 
 @dataclass
@@ -30,7 +30,7 @@ class Config:
     It supports list-like access patterns and hashing for use in search algorithms.
 
     Attributes:
-        positions: List of agent positions as (y, x) coordinates.
+        positions: List of agent positions as (z, y, x) coordinates.
     """
 
     positions: list[Coord] = field(default_factory=lambda: [])
@@ -42,7 +42,7 @@ class Config:
             k: Agent index.
 
         Returns:
-            The (y, x) coordinate of agent k.
+            The (z, y, x) coordinate of agent k.
         """
         return self.positions[k]
 
@@ -51,7 +51,7 @@ class Config:
 
         Args:
             k: Agent index.
-            coord: New (y, x) coordinate for agent k.
+            coord: New (z, y, x) coordinate for agent k.
         """
         self.positions[k] = coord
 
@@ -88,7 +88,7 @@ class Config:
         """Add a new agent position to this configuration.
 
         Args:
-            coord: The (y, x) coordinate to add.
+            coord: The (z, y, x) coordinate to add.
         """
         self.positions.append(coord)
 
@@ -228,51 +228,88 @@ def is_valid_coord(grid: Grid, coord: Coord) -> bool:
 
     Args:
         grid: The grid map.
-        coord: The (y, x) coordinate to check.
+        coord: The (z, y, x) coordinate to check.
 
     Returns:
         True if the coordinate is within bounds and represents a passable cell,
         False otherwise.
     """
-    y, x = coord
-    if y < 0 or y >= grid.shape[0] or x < 0 or x >= grid.shape[1] or not grid[coord]:
+    z, y, x = coord
+    if z < 0 or z >= grid.shape[0] or y < 0 or y >= grid.shape[1] or x < 0 or x >= grid.shape[2] or not grid[coord]:
         return False
     return True
 
 
 def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
-    """Get all valid neighboring coordinates (4-connected).
+    """Get all valid neighboring coordinates (13- or 5-connected).
 
     Args:
         grid: The grid map.
-        coord: The (y, x) coordinate whose neighbors to find.
+        coord: The (z, y, x) coordinate whose neighbors to find.
 
     Returns:
         List of valid neighboring coordinates. Returns empty list if coord
         itself is invalid.
     """
-    # coord: y, x
+    # coord: z, y, x
     neigh: list[Coord] = []
 
     # check valid input
     if not is_valid_coord(grid, coord):
         return neigh
 
-    y, x = coord
+    z, y, x = coord
 
-    if x > 0 and grid[y, x - 1]:
-        neigh.append((y, x - 1))
+    if x > 0: 
+        if not z and grid[z, y, x - 1]:
+            neigh.append((z, y, x - 1))
+        if grid[int(not z), y, x - 1]:      # vertical diagonal
+            neigh.append((int(not z), y, x - 1))
+        # horizontal diagonals
+        if not z:
+            if y > 0 and grid[z, y - 1, x - 1]:
+                neigh.append((z, y - 1, x - 1))
+            if y < grid.shape[1] - 1 and grid[z, y + 1, x - 1]:
+                neigh.append((z, y + 1, x - 1))
 
-    if x < grid.shape[1] - 1 and grid[y, x + 1]:
-        neigh.append((y, x + 1))
+    if x < grid.shape[2] - 1: 
+        if not z and grid[z, y, x + 1]:
+            neigh.append((z, y, x + 1))
+        if grid[int(not z), y, x + 1]:      # vertical diagonal
+            neigh.append((int(not z), y, x + 1))
+        # horizontal diagonals
+        if not z:
+            if y > 0 and grid[z, y - 1, x + 1]:
+                neigh.append((z, y - 1, x + 1))
+            if y < grid.shape[1] - 1 and grid[z, y + 1, x + 1]:
+                neigh.append((z, y + 1, x + 1))
 
-    if y > 0 and grid[y - 1, x]:
-        neigh.append((y - 1, x))
+    if y > 0: 
+        if not z and grid[z, y - 1, x]:
+            neigh.append((z, y - 1, x))
+        if grid[int(not z), y - 1, x]:
+            neigh.append((int(not z), y - 1, x))     # vertical diagonal
 
-    if y < grid.shape[0] - 1 and grid[y + 1, x]:
-        neigh.append((y + 1, x))
+    if y < grid.shape[1] - 1:
+        if not z and grid[z, y + 1, x]:
+            neigh.append((z, y + 1, x))
+        if grid[int(not z), y + 1, x]:
+            neigh.append((int(not z), y + 1, x))     # vertical diagonal
+
+    if grid[int(not z), y, x]:
+        neigh.append((int(not z), y, x))
 
     return neigh
+
+
+def get_actions(coord: Coord) -> list[Coord]:
+    """Possible actions: up, right, down, left, stay, diagonals."""
+    z, _, _ = coord
+    z_op = int(not z)
+    actions = [(0, 0, 0), (z_op, 0, 0), (z_op, 0, 1), (z_op, -1, 0), (z_op, 1, 0), (z_op, 0, -1)]
+    if not z:
+        actions += [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]  # d_z, d_y, d_x
+    return actions
 
 
 def save_configs_for_visualizer(configs: Configs, filename: str | Path) -> None:
