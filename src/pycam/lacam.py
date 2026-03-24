@@ -61,6 +61,9 @@ NO_AGENT: int = np.iinfo(np.int32).max
 NO_LOCATION: Coord = (np.iinfo(np.int32).max, np.iinfo(np.int32).max, np.iinfo(np.int32).max)
 """Sentinel coordinate indicating an unassigned location."""
 
+MAX_OCCUPANCY: int = 2
+"""Value indicating maximum number of agents allowed to occupy a location."""
+
 
 @dataclass
 class LowLevelNode:
@@ -257,8 +260,8 @@ class LaCAM:
         """
         self.info(1, "start solving MAPF")
         # set cache, used for collision check
-        self.occupied_from: np.ndarray = np.full(self.grid.shape, NO_AGENT, dtype=int)
-        self.occupied_to: np.ndarray = np.full(self.grid.shape, NO_AGENT, dtype=int)
+        self.occupied_from: np.ndarray = np.full((*self.grid.shape, MAX_OCCUPANCY), NO_AGENT, dtype=int)
+        self.occupied_to: np.ndarray = np.full((*self.grid.shape, MAX_OCCUPANCY), NO_AGENT, dtype=int)
 
         # set distance tables
         self.dist_tables: list[DistTable] = [
@@ -475,7 +478,9 @@ class LaCAM:
 
             v_i_to: Coord = Q_to[i]
             # check vertex collision
-            if self.occupied_to[v_i_to] != NO_AGENT:
+            if all(agent != NO_AGENT for agent in self.occupied_to[v_i_to]) or (
+                v_i_to[0] and any(agent != NO_AGENT for agent in self.occupied_to[v_i_to])
+            ):
                 flg_success = False
                 break
             # check edge collision
