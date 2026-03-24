@@ -470,7 +470,9 @@ class LaCAM:
             if Q_to[i] == NO_LOCATION:
                 a = self.rng.choice(get_actions(v_i_from))
                 v = (v_i_from[0] + a[0], v_i_from[1] + a[1], v_i_from[2] + a[2])
-                if is_valid_coord(self.grid, v):
+                if is_valid_coord(self.grid, v) and (
+                    all(agent == NO_AGENT for agent in self.occupied_to[(int(not v[0]), *v[1:])])
+                ):
                     Q_to[i] = v
                 else:
                     flg_success = False
