@@ -485,11 +485,22 @@ class LaCAM:
             ):
                 flg_success = False
                 break
-            # check edge collision
-            j = self.occupied_from[v_i_to]
-            if j != NO_AGENT and j != i and Q_to[j] == v_i_from:
-                flg_success = False
-                break
+            # check edge collision (diagonals)
+            action : Coord = (v_i_to[0] - v_i_from[0], v_i_to[1] - v_i_from[1], v_i_to[2] - v_i_from[2])
+            if sum(abs(val) for val in action) == 2:
+                if abs(action[0]):  #y-diag
+                    crossing_nodes = [(int(not v_i_from[0]), *v_i_from[1:]), (int(not v_i_to[0]), *v_i_to[1:])]
+                else:
+                    crossing_nodes = [(0, v_i_from[1], v_i_to[2]), (0, v_i_to[1], v_i_from[2])]
+                v_j_from = set(self.occupied_from[crossing_nodes[0]])
+                v_j_to = set(self.occupied_to[crossing_nodes[1]])
+
+                if any(agent != NO_AGENT for agent in v_j_from) and any(agent != NO_AGENT for agent in v_j_to):
+                    common = v_j_from.intersection(v_j_to)
+                    common.discard(NO_AGENT)                    
+                    if len(common) > 0:
+                        flg_success = False
+                        break
             self.occupied_to[v_i_to] = i
 
         # cleanup cache used for collision checking

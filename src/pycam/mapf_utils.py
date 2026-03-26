@@ -305,7 +305,7 @@ def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
 def get_actions(coord: Coord) -> list[Coord]:
     """Possible actions: up, right, down, left, stay, diagonals."""
     z, _, _ = coord
-    z_op = int(not z)
+    z_op = 1 if not z else -1
     actions = [(0, 0, 0), (z_op, 0, 0), (z_op, 0, 1), (z_op, -1, 0), (z_op, 1, 0), (z_op, 0, -1)]
     if not z:
         actions += [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]  # d_z, d_y, d_x
