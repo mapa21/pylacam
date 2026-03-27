@@ -64,6 +64,8 @@ NO_LOCATION: Coord = (np.iinfo(np.int32).max, np.iinfo(np.int32).max, np.iinfo(n
 MAX_OCCUPANCY: int = 2
 """Value indicating maximum number of agents allowed to occupy a location."""
 
+PARALLEL_ACTIONS : Coord = [(0, 0, 1), (0, 0, -1)]
+"""Actions that are in parallel to the x-axis"""
 
 @dataclass
 class LowLevelNode:
@@ -127,6 +129,7 @@ class HighLevelNode:
     h: int = 0
     f: int = field(init=False)
     neighbors: set[HighLevelNode] = field(default_factory=lambda: set())
+    merging_actions: Config = [None for _ in num_agents]
 
     def __post_init__(self) -> None:
         """Initialize computed fields after dataclass initialization."""
@@ -486,7 +489,7 @@ class LaCAM:
                 flg_success = False
                 break
             # check edge collision (diagonals)
-            action : Coord = (v_i_to[0] - v_i_from[0], v_i_to[1] - v_i_from[1], v_i_to[2] - v_i_from[2])
+            action = (v_i_to[0] - v_i_from[0], v_i_to[1] - v_i_from[1], v_i_to[2] - v_i_from[2])
             if sum(abs(val) for val in action) == 2:
                 if abs(action[0]):  #y-diag
                     crossing_nodes = [(int(not v_i_from[0]), *v_i_from[1:]), (int(not v_i_to[0]), *v_i_to[1:])]
@@ -501,6 +504,17 @@ class LaCAM:
                     if len(common) > 0:
                         flg_success = False
                         break
+            # check merging in parallel
+            other_agent = [agent for agent in self.occupied_to[v_i_to] if agent != NO_AGENT]
+            if other_agent:
+                v_j_from = N.Q[other_agent[0]]
+                other_action = (v_i_to[0] - v_j_from[0], v_i_to[1] - v_j_from[1], v_i_to[2] - v_j_from[2])
+                if action not in PARALLEL_ACTIONS or (v_j_from != v_i_to and other_action not in PARALLEL_ACTIONS):
+                    flg_success = False
+                    break
+                else:
+                    #store action
+                    pass
             self.occupied_to[v_i_to] = i
 
         # cleanup cache used for collision checking
