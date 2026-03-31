@@ -53,6 +53,9 @@ from .mapf_utils import (
     get_neighbors,
     is_valid_coord,
     get_actions,
+    calculate_action,
+    get_merging_actions,
+    Action,
 )
 
 NO_AGENT: int = np.iinfo(np.int32).max
@@ -64,7 +67,7 @@ NO_LOCATION: Coord = (np.iinfo(np.int32).max, np.iinfo(np.int32).max, np.iinfo(n
 MAX_OCCUPANCY: int = 2
 """Value indicating maximum number of agents allowed to occupy a location."""
 
-PARALLEL_ACTIONS : Coord = [(0, 0, 1), (0, 0, -1)]
+PARALLEL_ACTIONS: list[Action] = [(0, 0, 1), (0, 0, -1)]  # d_z, d_y, d_x 
 """Actions that are in parallel to the x-axis"""
 
 @dataclass
@@ -129,7 +132,7 @@ class HighLevelNode:
     h: int = 0
     f: int = field(init=False)
     neighbors: set[HighLevelNode] = field(default_factory=lambda: set())
-    merging_actions: Config = [None for _ in num_agents]
+    merging_actions: dict[int, Action] | None = None
 
     def __post_init__(self) -> None:
         """Initialize computed fields after dataclass initialization."""
@@ -349,6 +352,7 @@ class LaCAM:
                     order=self.get_order(Q_to),
                     g=N.g + self.get_edge_cost(N.Q, Q_to),
                     h=self.get_h_value(Q_to),
+                    merging_actions=get_merging_actions(N.Q, Q_to),
                 )
                 N.neighbors.add(N_new)
                 OPEN.appendleft(N_new)
@@ -489,7 +493,7 @@ class LaCAM:
                 flg_success = False
                 break
             # check edge collision (diagonals)
-            action = (v_i_to[0] - v_i_from[0], v_i_to[1] - v_i_from[1], v_i_to[2] - v_i_from[2])
+            action: Action = calculate_action(v_i_to, v_i_from)
             if sum(abs(val) for val in action) == 2:
                 if abs(action[0]):  #y-diag
                     crossing_nodes = [(int(not v_i_from[0]), *v_i_from[1:]), (int(not v_i_to[0]), *v_i_to[1:])]
@@ -507,14 +511,30 @@ class LaCAM:
             # check merging in parallel
             other_agent = [agent for agent in self.occupied_to[v_i_to] if agent != NO_AGENT]
             if other_agent:
+                #assert len(other_agent) == 0? just as sanity check
                 v_j_from = N.Q[other_agent[0]]
-                other_action = (v_i_to[0] - v_j_from[0], v_i_to[1] - v_j_from[1], v_i_to[2] - v_j_from[2])
+                other_action: Action = calculate_action(v_i_to, v_j_from)
                 if action not in PARALLEL_ACTIONS or (v_j_from != v_i_to and other_action not in PARALLEL_ACTIONS):
                     flg_success = False
                     break
                 else:
                     #store action
                     pass
+            # check splitting in parallel
+            if all(agent != NO_AGENT for agent in self.occupied_from[v_i_from]):    # 2 agents in v_i_from
+                tos: list[Coord] = [Q_to[agent] for agent in self.occupied_from[v_i_from] if Q_to[agent] != NO_LOCATION]
+                if len(tos) == 2 and tos[0] != tos[1]:  # if both goals are determined and they are splitting
+                    # check the action for the one(s) moving is in parallel
+                    actions: list[Action] = [calculate_action(Q_to[agent], N.Q[agent]) for agent in self.occupied_from[v_i_from]]
+                    if any(action != (0, 0, 0) and action not in PARALLEL_ACTIONS for action in actions):
+                        flg_success = False
+                        break
+                    # check the action for the one(s) moving is in opposite direction
+                    merging_actions: list[Action] = [N.merging_actions[agent] for agent in self.occupied_from[v_i_from]]
+                    if any(action != (0, 0, 0) and action != (-merging_actions[k][0], -merging_actions[k][1], -merging_actions[k][2]) for k, action in enumerate(actions)):
+                        flg_success = False
+                        break
+
             self.occupied_to[v_i_to] = i
 
         # cleanup cache used for collision checking

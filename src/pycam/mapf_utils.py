@@ -21,6 +21,9 @@ Grid: TypeAlias = NDArray[np.bool_]
 Coord: TypeAlias = tuple[int, int, int]
 """Coordinate tuple (z, y, x) representing a position in the grid."""
 
+Action: TypeAlias = tuple[int, int, int]
+"""Tuple indicating the deltas (d_z, d_y, d_x) of a movement between neighbouring nodes."""
+
 
 @dataclass
 class Config:
@@ -99,6 +102,16 @@ class Config:
             Iterator over agent positions.
         """
         return iter(self.positions)
+    
+    def count(self, val: Coord) -> int:
+        """
+        Args:
+            val: Coord to count for.
+
+        Returns:
+            number of ocurrences of ```val``` Coord in this configuration.
+        """
+        return self.positions.count(val)
 
 
 Configs: TypeAlias = list[Config]
@@ -302,7 +315,7 @@ def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
     return neigh
 
 
-def get_actions(coord: Coord) -> list[Coord]:
+def get_actions(coord: Coord) -> list[Action]:
     """Possible actions: up, right, down, left, stay, diagonals."""
     z, _, _ = coord
     z_op = 1 if not z else -1
@@ -311,6 +324,13 @@ def get_actions(coord: Coord) -> list[Coord]:
         actions += [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]  # d_z, d_y, d_x
     return actions
 
+def calculate_action(v_to: Coord, v_from: Coord) -> Action:
+    """Calculate (d_z, d_y, d_x) when moving from v_from to v_to"""
+    return (v_to[0] - v_from[0], v_to[1] - v_from[1], v_to[2] - v_from[2])
+
+def get_merging_actions(Q_from: Config, Q_to: Config) -> dict[int, Action]:
+    """Calculate the corresponding action when an agent comes to the same vertex already occupied by another agent"""
+    return {i: calculate_action(v_to, Q_from[i]) for i, v_to in enumerate(Q_to) if Q_to.count(v_to) == 2}
 
 def save_configs_for_visualizer(configs: Configs, filename: str | Path) -> None:
     """Save solution configurations to a file for visualization tools.
