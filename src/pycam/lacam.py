@@ -471,7 +471,8 @@ class LaCAM:
         flg_success = True
         for i in range(self.num_agents):
             v_i_from = N.Q[i]
-            self.occupied_from[v_i_from] = i
+            idx = np.argmax(self.occupied_from[v_i_from] == NO_AGENT)
+            self.occupied_from[v_i_from][idx] = i
 
             # set next position by random choice when without constraint
             if Q_to[i] == NO_LOCATION:
@@ -535,15 +536,16 @@ class LaCAM:
                         flg_success = False
                         break
 
-            self.occupied_to[v_i_to] = i
+            idx = np.argmax(self.occupied_to[v_i_to] == NO_AGENT)
+            self.occupied_to[v_i_to][idx] = i
 
         # cleanup cache used for collision checking
         for i in range(self.num_agents):
             v_i_from = N.Q[i]
-            self.occupied_from[v_i_from] = NO_AGENT
+            self.occupied_from[v_i_from] = np.full(MAX_OCCUPANCY, NO_AGENT, dtype=int)
             v_i_next = Q_to[i]
             if v_i_next != NO_LOCATION:
-                self.occupied_to[v_i_next] = NO_AGENT
+                self.occupied_to[v_i_next] = np.full(MAX_OCCUPANCY, NO_AGENT, dtype=int)
 
         return Q_to if flg_success else None
 
