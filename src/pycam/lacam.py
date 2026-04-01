@@ -493,6 +493,10 @@ class LaCAM:
             ):
                 flg_success = False
                 break
+            # check stacking of agents
+            if any(agent != NO_AGENT for agent in self.occupied_to[(int(not v_i_to[0]), *v_i_to[1:])]):
+                flg_success = False
+                break
             # check edge collision (diagonals)
             action: Action = calculate_action(v_i_to, v_i_from)
             if sum(abs(val) for val in action) == 2:
