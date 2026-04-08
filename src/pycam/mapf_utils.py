@@ -113,6 +113,14 @@ class Config:
         """
         return self.positions.count(val)
 
+    def init_populate(self, coords: list[Coord]) -> None:
+        """Adds a batch of new agent positions to this configuration.
+
+        Args:
+            coords: The list with (z, y, x) coordinate to add.
+        """
+        self.positions = coords
+
 
 Configs: TypeAlias = list[Config]
 """List of configurations representing a solution path over time."""
