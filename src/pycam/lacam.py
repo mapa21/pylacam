@@ -214,7 +214,7 @@ class LaCAM:
 
     def __init__(self) -> None:
         """Initialize the LaCAM* solver."""
-        pass
+        self.execution_status = "unknown"
 
     def solve(
         self,
@@ -361,12 +361,16 @@ class LaCAM:
         # categorize result
         if N_goal is not None and len(OPEN) == 0:
             self.info(1, f"reach optimal solution, cost={N_goal.g}")
+            self.execution_status = "success"
         elif N_goal is not None:
             self.info(1, f"suboptimal solution, cost={N_goal.g}")
+            self.execution_status = "success"
         elif len(OPEN) == 0:
             self.info(1, "detected unsolvable instance")
+            self.execution_status = "unsolvable"
         else:
             self.info(1, "failure due to timeout")
+            self.execution_status = "timeout"
         return self.backtrack(N_goal)
 
     @staticmethod
@@ -478,9 +482,7 @@ class LaCAM:
             if Q_to[i] == NO_LOCATION:
                 a = self.rng.choice(get_actions(v_i_from))
                 v = (v_i_from[0] + a[0], v_i_from[1] + a[1], v_i_from[2] + a[2])
-                if is_valid_coord(self.grid, v) and (
-                    all(agent == NO_AGENT for agent in self.occupied_to[(int(not v[0]), *v[1:])])
-                ):
+                if is_valid_coord(self.grid, v):
                     Q_to[i] = v
                 else:
                     flg_success = False
@@ -522,9 +524,6 @@ class LaCAM:
                 if action not in PARALLEL_ACTIONS or (v_j_from != v_i_to and other_action not in PARALLEL_ACTIONS):
                     flg_success = False
                     break
-                else:
-                    #store action
-                    pass
             # check splitting in parallel
             if all(agent != NO_AGENT for agent in self.occupied_from[v_i_from]):    # 2 agents in v_i_from
                 tos: list[Coord] = [Q_to[agent] for agent in self.occupied_from[v_i_from] if Q_to[agent] != NO_LOCATION]
@@ -535,10 +534,11 @@ class LaCAM:
                         flg_success = False
                         break
                     # check the action for the one(s) moving is in opposite direction
-                    merging_actions: list[Action] = [N.merging_actions[agent] for agent in self.occupied_from[v_i_from]]
-                    if any(action != (0, 0, 0) and action != (-merging_actions[k][0], -merging_actions[k][1], -merging_actions[k][2]) for k, action in enumerate(actions)):
-                        flg_success = False
-                        break
+                    if N.merging_actions is not None:
+                        merging_actions: list[Action] = [N.merging_actions[agent] for agent in self.occupied_from[v_i_from]]
+                        if any(action != (0, 0, 0) and action != (-merging_actions[k][0], -merging_actions[k][1], -merging_actions[k][2]) for k, action in enumerate(actions)):
+                            flg_success = False
+                            break
 
             idx = np.argmax(self.occupied_to[v_i_to] == NO_AGENT)
             self.occupied_to[v_i_to][idx] = i
