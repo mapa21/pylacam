@@ -287,8 +287,14 @@ class LaCAM:
         OPEN.appendleft(N_init)
         EXPLORED[N_init.Q] = N_init
 
+        max_len = len(OPEN)
+
         # main loop
         while len(OPEN) > 0 and not self.deadline.is_expired:
+            curr_len = len(OPEN)
+            if curr_len > max_len:
+                max_len = curr_len
+                print(f"new max_len:{max_len}")
             N: HighLevelNode = OPEN[0]
 
             # goal check
@@ -490,8 +496,11 @@ class LaCAM:
 
             v_i_to: Coord = Q_to[i]
             # check vertex collision
-            if all(agent != NO_AGENT for agent in self.occupied_to[v_i_to]) or (
-                v_i_to[0] and any(agent != NO_AGENT for agent in self.occupied_to[v_i_to])
+            # if all(agent != NO_AGENT for agent in self.occupied_to[v_i_to]) or (
+            #     v_i_to[0] and any(agent != NO_AGENT for agent in self.occupied_to[v_i_to])
+            # ):
+            if any(agent != NO_AGENT for agent in self.occupied_to[v_i_to]) and (
+                self.goals[i] != v_i_to
             ):
                 flg_success = False
                 break
