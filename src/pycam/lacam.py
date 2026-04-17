@@ -291,10 +291,6 @@ class LaCAM:
 
         # main loop
         while len(OPEN) > 0 and not self.deadline.is_expired:
-            curr_len = len(OPEN)
-            if curr_len > max_len:
-                max_len = curr_len
-                print(f"new max_len:{max_len}")
             N: HighLevelNode = OPEN[0]
 
             # goal check
@@ -543,7 +539,7 @@ class LaCAM:
                         flg_success = False
                         break
                     # check the action for the one(s) moving is in opposite direction
-                    if N.merging_actions is not None:
+                    if N.merging_actions:
                         merging_actions: list[Action] = [N.merging_actions[agent] for agent in self.occupied_from[v_i_from]]
                         if any(action != (0, 0, 0) and action != (-merging_actions[k][0], -merging_actions[k][1], -merging_actions[k][2]) for k, action in enumerate(actions)):
                             flg_success = False
