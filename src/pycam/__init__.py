@@ -10,6 +10,8 @@ from .mapf_utils import (
     is_valid_mapf_solution,
     save_configs_for_visualizer,
     validate_mapf_solution,
+    Grid, 
+    Config,
 )
 
 # set logger

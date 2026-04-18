@@ -1,13 +1,21 @@
 import re
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeAlias
 
 import numpy as np
+from numpy.typing import NDArray
 
-Grid: TypeAlias = np.ndarray
-Coord: TypeAlias = tuple[int, int]  # y, x
+Grid: TypeAlias = NDArray[np.bool_]
+"""3D boolean array representing a grid map where True indicates passable cells."""
+
+Coord: TypeAlias = tuple[int, int, int]
+"""Coordinate tuple (z, y, x) representing a position in the grid."""
+
+Action: TypeAlias = tuple[int, int, int]
+"""Tuple indicating the deltas (d_z, d_y, d_x) of a movement between neighbouring nodes."""
 
 
 @dataclass
@@ -25,9 +33,48 @@ class Config:
 
     def __hash__(self) -> int:
         return hash(tuple(self.positions))
+    
+    def __eq__(self, other: object) -> bool:
+        """Check equality with another configuration.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if other is a Config with identical positions.
+        """
+        if not isinstance(other, Config):
+            return NotImplemented
+        return self.positions == other.positions
 
     def append(self, coord: Coord) -> None:
         self.positions.append(coord)
+
+    def __iter__(self) -> Iterator[Coord]:
+        """Iterate over agent positions.
+
+        Returns:
+            Iterator over agent positions.
+        """
+        return iter(self.positions)
+    
+    def count(self, val: Coord) -> int:
+        """
+        Args:
+            val: Coord to count for.
+
+        Returns:
+            number of ocurrences of ```val``` Coord in this configuration.
+        """
+        return self.positions.count(val)
+
+    def init_populate(self, coords: list[Coord]) -> None:
+        """Adds a batch of new agent positions to this configuration.
+
+        Args:
+            coords: The list with (z, y, x) coordinate to add.
+        """
+        self.positions = coords
 
 
 Configs: TypeAlias = list[Config]
@@ -103,35 +150,80 @@ def get_scenario(scen_file: str | Path, N: int | None = None) -> tuple[Config, C
 
 
 def is_valid_coord(grid: Grid, coord: Coord) -> bool:
-    y, x = coord
-    if y < 0 or y >= grid.shape[0] or x < 0 or x >= grid.shape[1] or not grid[coord]:
+    z, y, x = coord
+    if z < 0 or z >= grid.shape[0] or y < 0 or y >= grid.shape[1] or x < 0 or x >= grid.shape[2] or not grid[coord]:
         return False
     return True
 
 
 def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
-    # coord: y, x
+    # coord: z, y, x
     neigh: list[Coord] = []
 
     # check valid input
     if not is_valid_coord(grid, coord):
         return neigh
 
-    y, x = coord
+    z, y, x = coord
 
-    if x > 0 and grid[y, x - 1]:
-        neigh.append((y, x - 1))
+    if x > 0: 
+        if not z and grid[z, y, x - 1]:
+            neigh.append((z, y, x - 1))
+        # if grid[int(not z), y, x - 1]:      # vertical diagonal
+        #     neigh.append((int(not z), y, x - 1))
+        # # horizontal diagonals
+        # if not z:
+        #     if y > 0 and grid[z, y - 1, x - 1]:
+        #         neigh.append((z, y - 1, x - 1))
+        #     if y < grid.shape[1] - 1 and grid[z, y + 1, x - 1]:
+        #         neigh.append((z, y + 1, x - 1))
 
-    if x < grid.shape[1] - 1 and grid[y, x + 1]:
-        neigh.append((y, x + 1))
+    if x < grid.shape[2] - 1: 
+        if not z and grid[z, y, x + 1]:
+            neigh.append((z, y, x + 1))
+        # if grid[int(not z), y, x + 1]:      # vertical diagonal
+        #     neigh.append((int(not z), y, x + 1))
+        # # horizontal diagonals
+        # if not z:
+        #     if y > 0 and grid[z, y - 1, x + 1]:
+        #         neigh.append((z, y - 1, x + 1))
+        #     if y < grid.shape[1] - 1 and grid[z, y + 1, x + 1]:
+        #         neigh.append((z, y + 1, x + 1))
 
-    if y > 0 and grid[y - 1, x]:
-        neigh.append((y - 1, x))
+    if y > 0: 
+        if not z and grid[z, y - 1, x]:
+            neigh.append((z, y - 1, x))
+        # if grid[int(not z), y - 1, x]:
+        #     neigh.append((int(not z), y - 1, x))     # vertical diagonal
 
-    if y < grid.shape[0] - 1 and grid[y + 1, x]:
-        neigh.append((y + 1, x))
+    if y < grid.shape[1] - 1:
+        if not z and grid[z, y + 1, x]:
+            neigh.append((z, y + 1, x))
+        # if grid[int(not z), y + 1, x]:
+        #     neigh.append((int(not z), y + 1, x))     # vertical diagonal
+
+    # if grid[int(not z), y, x]:
+    #     neigh.append((int(not z), y, x))
 
     return neigh
+
+def get_actions(coord: Coord) -> list[Action]:
+    """Possible actions: up, right, down, left, stay, diagonals."""
+    # z, _, _ = coord
+    # z_op = 1 if not z else -1
+    # actions = [(0, 0, 0), (z_op, 0, 0), (z_op, 0, 1), (z_op, -1, 0), (z_op, 1, 0), (z_op, 0, -1)]
+    # if not z:
+    #     actions += [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]  # d_z, d_y, d_x
+    actions = [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 0, 0)] 
+    return actions
+
+def calculate_action(v_to: Coord, v_from: Coord) -> Action:
+    """Calculate (d_z, d_y, d_x) when moving from v_from to v_to"""
+    return (v_to[0] - v_from[0], v_to[1] - v_from[1], v_to[2] - v_from[2])
+
+def get_merging_actions(Q_from: Config, Q_to: Config) -> dict[int, Action]:
+    """Calculate the corresponding action when an agent comes to the same vertex already occupied by another agent"""
+    return {i: calculate_action(v_to, Q_from[i]) for i, v_to in enumerate(Q_to) if Q_to.count(v_to) == 2}
 
 
 def save_configs_for_visualizer(configs: Configs, filename: str | Path) -> None:

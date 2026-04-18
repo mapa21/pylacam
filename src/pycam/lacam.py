@@ -7,7 +7,7 @@ import numpy as np
 from loguru import logger
 
 from .dist_table import DistTable
-from .mapf_utils import Config, Configs, Coord, Deadline, Grid, get_neighbors
+from .mapf_utils import Config, Configs, Coord, Deadline, Grid, get_neighbors, Action, get_merging_actions
 from .pibt import PIBT
 
 
@@ -35,6 +35,7 @@ class HighLevelNode:
     h: int = 0
     f: int = field(init=False)
     neighbors: set[HighLevelNode] = field(default_factory=lambda: set())
+    merging_actions: dict[int, Action] | None = None
 
     def __post_init__(self) -> None:
         self.f = self.g + self.h
@@ -84,7 +85,7 @@ class LaCAM:
         self.dist_tables = [DistTable(self.grid, g) for g in self.goals]
 
         # set PIBT
-        self.pibt = PIBT(self.dist_tables)
+        self.pibt = PIBT(self.dist_tables, self.goals)
 
         # set search scheme
         OPEN: deque[HighLevelNode] = deque([])
@@ -132,7 +133,7 @@ class LaCAM:
                     N.tree.append(C.get_child(i, u))
 
             # generate the next configuration
-            Q_to = self.configuration_generaotr(N, C)
+            Q_to = self.configuration_generator(N, C)
             if Q_to is None:
                 # invalid configuration
                 continue
@@ -164,6 +165,7 @@ class LaCAM:
                     order=self.get_order(Q_to),
                     g=N.g + self.get_edge_cost(N.Q, Q_to),
                     h=self.get_h_value(Q_to),
+                    merging_actions=get_merging_actions(N.Q, Q_to),
                 )
                 N.neighbors.add(N_new)
                 OPEN.appendleft(N_new)
@@ -172,12 +174,16 @@ class LaCAM:
         # categorize result
         if N_goal is not None and len(OPEN) == 0:
             self.info(1, f"reach optimal solution, cost={N_goal.g}")
+            self.execution_status = "success"
         elif N_goal is not None:
             self.info(1, f"suboptimal solution, cost={N_goal.g}")
+            self.execution_status = "success"
         elif len(OPEN) == 0:
             self.info(1, "detected unsolvable instance")
+            self.execution_status = "unsolvable"
         else:
             self.info(1, "failure due to timeout")
+            self.execution_status = "timeout"
         return self.backtrack(N_goal)
 
     @staticmethod
@@ -216,7 +222,7 @@ class LaCAM:
         order.sort(key=lambda i: self.dist_tables[i].get(Q[i]), reverse=True)
         return order
 
-    def configuration_generaotr(
+    def configuration_generator(
         self, N: HighLevelNode, C: LowLevelNode
     ) -> Config | None:
         # setup next configuration
@@ -225,7 +231,7 @@ class LaCAM:
             Q_to[C.who[k]] = C.where[k]
 
         # apply PIBT
-        success = self.pibt.step(N.Q, Q_to, N.order)
+        success = self.pibt.step(N.Q, Q_to, N.order, N.merging_actions)
         return Q_to if success else None
 
     def info(self, level: int, msg: str) -> None:
