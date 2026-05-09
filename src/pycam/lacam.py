@@ -36,6 +36,7 @@ class HighLevelNode:
     f: int = field(init=False)
     neighbors: set[HighLevelNode] = field(default_factory=lambda: set())
     merging_actions: dict[int, Action] | None = None
+    priorities: list[float] = field(default_factory=lambda: list())
 
     def __post_init__(self) -> None:
         self.f = self.g + self.h
@@ -94,8 +95,9 @@ class LaCAM:
 
         # set initial node
         Q_init = self.starts
+        new_order, new_priorities = self.get_order(Q_init, None)
         N_init = HighLevelNode(
-            Q=Q_init, order=self.get_order(Q_init), h=self.get_h_value(Q_init)
+            Q=Q_init, order=new_order, h=self.get_h_value(Q_init), priorities=new_priorities
         )
         OPEN.appendleft(N_init)
         EXPLORED[N_init.Q] = N_init
@@ -159,13 +161,15 @@ class LaCAM:
                                 OPEN.appendleft(N_to)
             else:
                 # new configuration
+                new_order, new_priorities = self.get_order(Q_to, N)
                 N_new = HighLevelNode(
                     Q=Q_to,
                     parent=N,
-                    order=self.get_order(Q_to),
+                    order=new_order,
                     g=N.g + self.get_edge_cost(N.Q, Q_to),
                     h=self.get_h_value(Q_to),
                     merging_actions=get_merging_actions(N.Q, Q_to),
+                    priorities=new_priorities,
                 )
                 N.neighbors.add(N_new)
                 OPEN.appendleft(N_new)
@@ -214,13 +218,33 @@ class LaCAM:
             cost += c
         return cost
 
-    def get_order(self, Q: Config) -> list[int]:
+    def get_order(self, Q: Config, parent: HighLevelNode | None) -> tuple[list[int], list[float]]:
         # e.g., by descending order of dist(Q[i], g_i)
         # Note that this is not an effective PIBT prioritization scheme
+        # order = list(range(self.num_agents))
+        # self.rng.shuffle(order)
+        # order.sort(key=lambda i: self.dist_tables[i].get(Q[i]), reverse=True)
+        # return order
+
+        priorities: list[float] = [0.0] * self.num_agents
+
+        for i in range(self.num_agents):
+            dist = self.dist_tables[i].get(Q[i])
+            
+            if parent is None:  # Initialize priorities
+                priorities[i] = dist / 10000.0
+            else:   # Dynamic priorities, akin to PIBT
+                if dist != 0:
+                    priorities[i] = parent.priorities[i] + 1.0
+                else:
+                    priorities[i] = parent.priorities[i] - int(parent.priorities[i])
+
+        # Generate order based on descending priorities
         order = list(range(self.num_agents))
-        self.rng.shuffle(order)
-        order.sort(key=lambda i: self.dist_tables[i].get(Q[i]), reverse=True)
-        return order
+        # Sort indices: higher priority values come first
+        order.sort(key=lambda i: priorities[i], reverse=True)
+        
+        return order, priorities
 
     def configuration_generator(
         self, N: HighLevelNode, C: LowLevelNode
