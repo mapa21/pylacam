@@ -76,6 +76,10 @@ class Config:
         """
         self.positions = coords
 
+    def copy(self):
+        return Config(self.positions)
+        
+
 
 Configs: TypeAlias = list[Config]
 
@@ -171,24 +175,24 @@ def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
             neigh.append((z, y, x - 1))
         # if grid[int(not z), y, x - 1]:      # vertical diagonal
         #     neigh.append((int(not z), y, x - 1))
-        # # horizontal diagonals
-        # if not z:
-        #     if y > 0 and grid[z, y - 1, x - 1]:
-        #         neigh.append((z, y - 1, x - 1))
-        #     if y < grid.shape[1] - 1 and grid[z, y + 1, x - 1]:
-        #         neigh.append((z, y + 1, x - 1))
+        # horizontal diagonals
+        if not z:
+            if y > 0 and grid[z, y - 1, x - 1]:
+                neigh.append((z, y - 1, x - 1))
+            if y < grid.shape[1] - 1 and grid[z, y + 1, x - 1]:
+                neigh.append((z, y + 1, x - 1))
 
     if x < grid.shape[2] - 1: 
         if not z and grid[z, y, x + 1]:
             neigh.append((z, y, x + 1))
         # if grid[int(not z), y, x + 1]:      # vertical diagonal
         #     neigh.append((int(not z), y, x + 1))
-        # # horizontal diagonals
-        # if not z:
-        #     if y > 0 and grid[z, y - 1, x + 1]:
-        #         neigh.append((z, y - 1, x + 1))
-        #     if y < grid.shape[1] - 1 and grid[z, y + 1, x + 1]:
-        #         neigh.append((z, y + 1, x + 1))
+        # horizontal diagonals
+        if not z:
+            if y > 0 and grid[z, y - 1, x + 1]:
+                neigh.append((z, y - 1, x + 1))
+            if y < grid.shape[1] - 1 and grid[z, y + 1, x + 1]:
+                neigh.append((z, y + 1, x + 1))
 
     if y > 0: 
         if not z and grid[z, y - 1, x]:
@@ -199,8 +203,8 @@ def get_neighbors(grid: Grid, coord: Coord) -> list[Coord]:
     if y < grid.shape[1] - 1:
         if not z and grid[z, y + 1, x]:
             neigh.append((z, y + 1, x))
-        # if grid[int(not z), y + 1, x]:
-        #     neigh.append((int(not z), y + 1, x))     # vertical diagonal
+    #     if grid[int(not z), y + 1, x]:
+    #         neigh.append((int(not z), y + 1, x))     # vertical diagonal
 
     # if grid[int(not z), y, x]:
     #     neigh.append((int(not z), y, x))
@@ -214,7 +218,8 @@ def get_actions(coord: Coord) -> list[Action]:
     # actions = [(0, 0, 0), (z_op, 0, 0), (z_op, 0, 1), (z_op, -1, 0), (z_op, 1, 0), (z_op, 0, -1)]
     # if not z:
     #     actions += [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]  # d_z, d_y, d_x
-    actions = [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 0, 0)] 
+    # actions = [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 0, 0)]     # 4-connectivity
+    actions = [(0, -1, 0), (0, 0, 1), (0, 1, 0), (0, 0, -1), (0, 0, 0), (0, 1, 1), (0, -1, 1), (0, -1, -1), (0, 1, -1)]     # 8-connectivity
     return actions
 
 def calculate_action(v_to: Coord, v_from: Coord) -> Action:
