@@ -68,10 +68,17 @@ class PIBT:
                 v_j_from = set(self.occupied_now[crossing_nodes[0]])
                 v_j_to = set(self.occupied_nxt[crossing_nodes[1]])
 
-                if any(agent != self.NIL for agent in v_j_from) and any(agent != self.NIL for agent in v_j_to):
-                    common = v_j_from.intersection(v_j_to)
-                    common.discard(self.NIL)                    
-                    if len(common) > 0:
+                v_k_from = set(self.occupied_nxt[crossing_nodes[0]])
+                v_k_to = set(self.occupied_now[crossing_nodes[1]])
+
+                if (any(agent != self.NIL for agent in v_j_from) and any(agent != self.NIL for agent in v_j_to)) or (
+                    any(agent != self.NIL for agent in v_k_from) and any(agent != self.NIL for agent in v_k_to)):
+                    common_j = v_j_from.intersection(v_j_to)
+                    common_j.discard(self.NIL)              
+                    common_k = v_k_from.intersection(v_k_to)
+                    common_k.discard(self.NIL)              
+
+                    if len(common_j) > 0 or len(common_k) > 0:
                         continue
             # check merging in parallel
             other_agent = [agent for agent in self.occupied_nxt[v] if agent != self.NIL]
@@ -84,9 +91,10 @@ class PIBT:
             # check splitting in parallel
             if all(agent != self.NIL for agent in self.occupied_now[Q_from[i]]):    # 2 agents in v_i_from
                 tos: list[Coord] = [Q_to[agent] for agent in self.occupied_now[Q_from[i]] if Q_to[agent] != self.NIL_COORD]
-                if len(tos) == 2 and tos[0] != tos[1]:  # if both goals are determined and they are splitting
+                if len(tos) == 1 and tos[0] != v:  # if both agents are going to different places
+                    tos.append(v)
                     # check the action for the one(s) moving is in parallel
-                    actions: list[Action] = [calculate_action(Q_to[agent], Q_from[agent]) for agent in self.occupied_now[Q_from[i]]]
+                    actions: list[Action] = [calculate_action(to, Q_from[i]) for to in tos]
                     if any(action != (0, 0, 0) and action not in PARALLEL_ACTIONS for action in actions):
                         continue
                     # check the action for the one(s) moving is in opposite direction
@@ -175,10 +183,17 @@ class PIBT:
                     v_j_from = set(self.occupied_now[crossing_nodes[0]])
                     v_j_to = set(self.occupied_nxt[crossing_nodes[1]])
 
-                    if any(agent != self.NIL for agent in v_j_from) and any(agent != self.NIL for agent in v_j_to):
-                        common = v_j_from.intersection(v_j_to)
-                        common.discard(self.NIL)                    
-                        if len(common) > 0:
+                    v_k_from = set(self.occupied_nxt[crossing_nodes[0]])
+                    v_k_to = set(self.occupied_now[crossing_nodes[1]])
+
+                    if (any(agent != self.NIL for agent in v_j_from) and any(agent != self.NIL for agent in v_j_to)) or (
+                        any(agent != self.NIL for agent in v_k_from) and any(agent != self.NIL for agent in v_k_to)):
+                        common_j = v_j_from.intersection(v_j_to)
+                        common_j.discard(self.NIL)              
+                        common_k = v_k_from.intersection(v_k_to)
+                        common_k.discard(self.NIL)              
+
+                        if len(common_j) > 0 or len(common_k) > 0:
                             flg_success = False
                             break
                 # check merging in parallel
